@@ -2,6 +2,26 @@
 
 All notable changes to `@whydrf/eslint-plugin-nava` are documented here.
 
+## [0.4.0]
+
+### Added
+
+- **Full configurability via `createConfig(options)` factory.** Every aspect of nava's
+  config is now configurable: aliases, files, globals, parser options, settings, rules,
+  and all preset toggles (jsRecommended, tsRecommended, perfectionistRecommended,
+  prettier, react, sortImports, consistentTypeImports, noInlineTypeImports,
+  multilineTypeLiterals, moduleMemberOrder, noEmpty, commonJs, nodeScript, vitest).
+- `NavaConfigOptions`, `NavaConfigs`, `EnvironmentBlockOptions`, `VitestOptions` types
+  exported for TypeScript consumers.
+- `configs.vitest` is now optional in `NavaConfigs` (set `vitest: false` to disable).
+
+### Changed
+
+- **Backward compatible:** `configs` (recommended, react, vitest) remain the default
+  exports with the same behavior as v0.3.0. `createConfig()` with no options produces
+  identical results.
+- `vitest.ts` re-export now types `configs.vitest` as `Linter.Config | undefined`.
+
 ## [0.3.0]
 
 ### Added

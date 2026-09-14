@@ -49,100 +49,209 @@ const vitestGlobals = {
     vi: 'readonly',
 };
 
-const projectAliasPattern =
-    '^@(assets(?:/illustrations)?|shared|adapters|features|infrastructure|components|services|configs|domain|utils|hooks|constants)(?:/.*)?$';
+export type EnvironmentBlockOptions = {
+    files?: string[];
+    globals?: Record<string, string>;
+    rules?: Linter.RulesRecord;
+};
 
-const perfectionistRecommendedLineLengthRules = perfectionist.configs['recommended-line-length'].rules;
+export type VitestOptions = {
+    files?: string[];
+    globals?: Record<string, string>;
+    rules?: Linter.RulesRecord;
+    useRecommended?: boolean;
+    noExplicitAny?: boolean;
+};
 
-export const configs: {
+export type NavaConfigOptions = {
+    files?: string[];
+    aliases?: string[];
+    globals?: Record<string, string>;
+    parserOptions?: Linter.ParserOptions;
+    settings?: Record<string, unknown>;
+    rules?: Linter.RulesRecord;
+
+    jsRecommended?: boolean;
+    tsRecommended?: boolean;
+    perfectionistRecommended?: boolean;
+    prettier?: boolean;
+    react?: boolean;
+
+    sortImports?: false | Record<string, unknown>;
+    consistentTypeImports?: false | Record<string, unknown>;
+    noInlineTypeImports?: boolean;
+    multilineTypeLiterals?: boolean;
+    moduleMemberOrder?: boolean;
+    noEmpty?: false | Record<string, unknown>;
+
+    commonJs?: false | EnvironmentBlockOptions;
+    nodeScript?: false | EnvironmentBlockOptions;
+    vitest?: false | VitestOptions;
+};
+
+export type NavaConfigs = {
     recommended: Linter.Config;
     react: Linter.Config[];
-    vitest: Linter.Config;
-} = {
-    recommended: {
-        plugins: {
-            nava: { rules },
-        },
+    vitest?: Linter.Config;
+};
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const defaultAliases = [
+    '@assets',
+    '@shared',
+    '@adapters',
+    '@features',
+    '@infrastructure',
+    '@components',
+    '@services',
+    '@configs',
+    '@domain',
+    '@utils',
+    '@hooks',
+    '@constants',
+];
+
+const buildAliasPattern = (aliases: string[]) => `^(${aliases.map(escapeRegExp).join('|')})(?:/.*)?$`;
+
+const buildReactConfig = (options: NavaConfigOptions = {}): Linter.Config[] => {
+    const {
+        files = ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+        aliases = defaultAliases,
+        globals = {},
+        parserOptions = {},
+        settings = {},
+        rules: userRules = {},
+        jsRecommended = true,
+        tsRecommended = true,
+        perfectionistRecommended = true,
+        prettier: enablePrettier = true,
+        react: enableReact = true,
+        sortImports,
+        consistentTypeImports,
+        noInlineTypeImports: enableNoInlineTypeImports = true,
+        multilineTypeLiterals: enableMultilineTypeLiterals = true,
+        moduleMemberOrder: enableModuleMemberOrder = true,
+        noEmpty,
+        commonJs = true,
+        nodeScript = true,
+    } = options;
+
+    const config: Linter.Config[] = [];
+
+    if (jsRecommended) {
+        config.push(js.configs.recommended);
+    }
+
+    if (tsRecommended) {
+        config.push(...tseslint.configs.recommended);
+    }
+
+    const perfectionistRules = perfectionistRecommended
+        ? perfectionist.configs['recommended-line-length'].rules
+        : {};
+
+    const configRules: Linter.RulesRecord = {
+        ...perfectionistRules,
+        'perfectionist/sort-modules': 'off',
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+    };
+
+    if (enablePrettier) {
+        configRules['prettier/prettier'] = 'error';
+    }
+
+    if (enableNoInlineTypeImports) {
+        configRules['nava/no-inline-type-imports'] = 'error';
+    }
+
+    if (enableMultilineTypeLiterals) {
+        configRules['nava/multiline-type-literals'] = 'error';
+    }
+
+    if (enableModuleMemberOrder) {
+        configRules['nava/module-member-order'] = 'error';
+    }
+
+    if (enableReact) {
+        configRules['react-hooks/rules-of-hooks'] = 'error';
+        configRules['react-hooks/exhaustive-deps'] = 'warn';
+        configRules['react/react-in-jsx-scope'] = 'off';
+        configRules['react/prop-types'] = 'off';
+    }
+
+    if (sortImports !== false) {
+        configRules['perfectionist/sort-imports'] = [
+            'error',
+            {
+                groups: [
+                    ['type-builtin', 'value-builtin', 'type-external', 'value-external'],
+                    ['alias-type', 'alias-value'],
+                    ['type-parent', 'type-sibling', 'type-index', 'value-parent', 'value-sibling', 'value-index'],
+                    'unknown',
+                ],
+                customGroups: [
+                    { groupName: 'alias-type', selector: 'type', elementNamePattern: buildAliasPattern(aliases) },
+                    { groupName: 'alias-value', elementNamePattern: buildAliasPattern(aliases) },
+                ],
+                fallbackSort: { type: 'alphabetical', order: 'asc' },
+                type: 'line-length',
+                newlinesBetween: 1,
+                newlinesInside: 0,
+                order: 'desc',
+                ...sortImports,
+            },
+        ];
+    }
+
+    if (consistentTypeImports !== false) {
+        configRules['@typescript-eslint/consistent-type-imports'] = [
+            'error',
+            { fixStyle: 'separate-type-imports', prefer: 'type-imports', ...consistentTypeImports },
+        ];
+    }
+
+    if (noEmpty !== false) {
+        configRules['no-empty'] = ['error', { allowEmptyCatch: true, ...noEmpty }];
+    }
+
+    const plugins: Record<string, ESLint.Plugin> = {
+        nava: { rules } as ESLint.Plugin,
+        perfectionist: perfectionist as unknown as ESLint.Plugin,
+        prettier: prettier as unknown as ESLint.Plugin,
+    };
+
+    if (enableReact) {
+        plugins['react-hooks'] = reactHooks as unknown as ESLint.Plugin;
+        plugins.react = reactPlugin as unknown as ESLint.Plugin;
+    }
+
+    config.push({
+        files,
+        plugins,
         rules: {
-            'nava/no-inline-type-imports': 'error',
-            'nava/multiline-type-literals': 'error',
-            'nava/module-member-order': 'error',
+            ...configRules,
+            ...userRules,
         },
-    },
-
-    react: [
-        js.configs.recommended,
-        ...tseslint.configs.recommended,
-
-        {
-            files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
-            plugins: {
-                nava: { rules },
-                perfectionist,
-                prettier,
-                'react-hooks': reactHooks as unknown as ESLint.Plugin,
-                react: reactPlugin,
+        languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: {
+                ecmaFeatures: { jsx: true },
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+                project: false,
+                ...parserOptions,
             },
-            rules: {
-                ...perfectionistRecommendedLineLengthRules,
-                'prettier/prettier': 'error',
-                'perfectionist/sort-modules': 'off',
-                'nava/module-member-order': 'error',
-                'nava/multiline-type-literals': 'error',
-                'nava/no-inline-type-imports': 'error',
-                'perfectionist/sort-imports': [
-                    'error',
-                    {
-                        groups: [
-                            ['type-builtin', 'value-builtin', 'type-external', 'value-external'],
-                            ['alias-type', 'alias-value'],
-                            [
-                                'type-parent',
-                                'type-sibling',
-                                'type-index',
-                                'value-parent',
-                                'value-sibling',
-                                'value-index',
-                            ],
-                            'unknown',
-                        ],
-                        customGroups: [
-                            { groupName: 'alias-type', selector: 'type', elementNamePattern: projectAliasPattern },
-                            { groupName: 'alias-value', elementNamePattern: projectAliasPattern },
-                        ],
-                        fallbackSort: { type: 'alphabetical', order: 'asc' },
-                        type: 'line-length',
-                        newlinesBetween: 1,
-                        newlinesInside: 0,
-                        order: 'desc',
-                    },
-                ],
-                '@typescript-eslint/consistent-type-imports': [
-                    'error',
-                    { fixStyle: 'separate-type-imports', prefer: 'type-imports' },
-                ],
-                '@typescript-eslint/explicit-function-return-type': 'off',
-                'no-empty': ['error', { allowEmptyCatch: true }],
-                'react-hooks/rules-of-hooks': 'error',
-                'react-hooks/exhaustive-deps': 'warn',
-                'react/react-in-jsx-scope': 'off',
-                'react/prop-types': 'off',
-            },
-            languageOptions: {
-                parser: tseslint.parser,
-                parserOptions: {
-                    ecmaFeatures: { jsx: true },
-                    ecmaVersion: 'latest',
-                    sourceType: 'module',
-                    project: false,
-                },
-                globals: browserGlobals,
-            },
-            settings: { react: { version: 'detect' } },
+            globals: { ...browserGlobals, ...globals },
         },
+        settings: { react: { version: 'detect' }, ...settings },
+    });
 
-        {
-            files: [
+    if (commonJs !== false) {
+        const block: EnvironmentBlockOptions = commonJs === true ? {} : commonJs;
+        config.push({
+            files: block.files ?? [
                 'src/configs/tailwind/**/*.js',
                 '**/*.webpack.{js,cjs}',
                 '**/*.config.{js,cjs}',
@@ -151,35 +260,77 @@ export const configs: {
             ],
             languageOptions: {
                 parserOptions: { ecmaVersion: 'latest', sourceType: 'script' },
-                globals: commonJsGlobals,
+                globals: { ...commonJsGlobals, ...block.globals },
             },
-            rules: { '@typescript-eslint/no-require-imports': 'off' },
-        },
+            rules: { '@typescript-eslint/no-require-imports': 'off', ...block.rules },
+        });
+    }
 
-        {
-            files: ['scripts/**/*.mjs'],
+    if (nodeScript !== false) {
+        const block: EnvironmentBlockOptions = nodeScript === true ? {} : nodeScript;
+        config.push({
+            files: block.files ?? ['scripts/**/*.mjs'],
             languageOptions: {
                 parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-                globals: nodeScriptGlobals,
+                globals: { ...nodeScriptGlobals, ...block.globals },
             },
-        },
-    ],
+            rules: { ...block.rules },
+        });
+    }
 
-    vitest: {
-        files: ['**/*.{test,spec}.{ts,tsx,js,jsx}'],
+    return config;
+};
+
+const buildVitestConfig = (options: VitestOptions = {}): Linter.Config => {
+    const {
+        files = ['**/*.{test,spec}.{ts,tsx,js,jsx}'],
+        globals = {},
+        rules: userRules = {},
+        useRecommended = true,
+        noExplicitAny = true,
+    } = options;
+
+    return {
+        files,
         plugins: {
             vitest: vitestPlugin,
         },
         languageOptions: {
-            globals: vitestGlobals,
+            globals: { ...vitestGlobals, ...globals },
         },
         rules: {
-            ...vitestPlugin.configs.recommended.rules,
-            '@typescript-eslint/no-explicit-any': 'off',
+            ...(useRecommended ? vitestPlugin.configs.recommended.rules : {}),
+            ...(noExplicitAny ? { '@typescript-eslint/no-explicit-any': 'off' } : {}),
+            ...userRules,
         },
-    },
+    };
 };
 
-export default { rules, configs };
+const buildRecommendedConfig = (options: NavaConfigOptions = {}): Linter.Config => ({
+    plugins: {
+        nava: { rules } as ESLint.Plugin,
+    },
+    rules: {
+        'nava/no-inline-type-imports': 'error',
+        'nava/multiline-type-literals': 'error',
+        'nava/module-member-order': 'error',
+        ...(options.rules ?? {}),
+    },
+});
 
-// generated by build
+export const createConfig = (options: NavaConfigOptions = {}): NavaConfigs => {
+    const result: NavaConfigs = {
+        recommended: buildRecommendedConfig(options),
+        react: buildReactConfig(options),
+    };
+
+    if (options.vitest !== false) {
+        result.vitest = buildVitestConfig(options.vitest || {});
+    }
+
+    return result;
+};
+
+export const configs: NavaConfigs = createConfig();
+
+export default { rules, configs, createConfig };

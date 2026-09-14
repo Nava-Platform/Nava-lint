@@ -1,6 +1,6 @@
 {
   "name": "@whydrf/eslint-plugin-nava",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An opinionated ESLint plugin for TypeScript projects that enforces clean code conventions, import organization, type safety patterns, and consistent module structure.",
   "type": "module",
   "license": "MIT",

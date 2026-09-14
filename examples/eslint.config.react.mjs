@@ -1,3 +1,9 @@
-import navaReact from '@whydrf/eslint-plugin-nava/configs/react';
+import { createConfig } from '@whydrf/eslint-plugin-nava';
 
-export default [...navaReact];
+const { react, vitest } = createConfig();
+
+export default [
+    { ignores: ['node_modules/**', 'dist/**'] },
+    ...react,
+    vitest,
+];

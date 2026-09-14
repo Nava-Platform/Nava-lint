@@ -79,14 +79,31 @@ export default [
 > dependency; the parser must be configured for `.ts/.tsx` files, as above. No typed-linting
 > setup (`parserOptions.project`) is required.
 
-### Option 2 — Full React config
+### Option 2 — Full React config (with `createConfig`)
 
-A ready-made flat config for React/TypeScript projects that includes:
+Fully configurable via `createConfig(options)`:
 
-- the plugin's own rules
-- `eslint-plugin-perfectionist` (import sorting by line length)
-- `eslint-plugin-prettier` (formatting via Prettier)
-- JSX settings, browser globals, and disabling React-incompatible rules like `react/react-in-jsx-scope`
+```js
+// eslint.config.js
+import { createConfig } from '@whydrf/eslint-plugin-nava';
+
+const { react, vitest } = createConfig({
+    aliases: ['@components', '@domain', '@ui'],
+    prettier: true,
+    vitest: true,
+    rules: {
+        'no-console': 'warn',
+    },
+});
+
+export default [
+    { ignores: ['node_modules/**', 'dist/**'] },
+    ...react,
+    vitest,
+];
+```
+
+### Option 3 — Full React config (subpath import)
 
 ```js
 // eslint.config.js
@@ -94,28 +111,10 @@ import navaReact from '@whydrf/eslint-plugin-nava/configs/react';
 
 export default [
     ...navaReact,
-    {
-        rules: {
-            // example: override import grouping
-            'perfectionist/sort-imports': [
-                'error',
-                {
-                    groups: [['builtin', 'external'], ['alias'], ['parent', 'sibling', 'index'], 'unknown'],
-                    customGroups: [
-                        { elementNamePattern: '^@modules/', groupName: 'alias' },
-                        { elementNamePattern: '^src/', groupName: 'sibling' },
-                    ],
-                    type: 'line-length',
-                    newlinesBetween: 1,
-                    order: 'desc',
-                },
-            ],
-        },
-    },
 ];
 ```
 
-### Option 3 — A single rule
+### Option 4 — A single rule
 
 ```js
 // eslint.config.js
@@ -221,8 +220,10 @@ const DEFAULTS = {};
 
 | Export                                       | Description                                                          |
 | -------------------------------------------- | -------------------------------------------------------------------- |
+| `createConfig(options?)`                     | Factory function returning `{ recommended, react, vitest? }`.       |
 | `@whydrf/eslint-plugin-nava/recommended`     | A `Linter.Config` with the three rules enabled (ESLint 9 flat config).|
 | `@whydrf/eslint-plugin-nava/configs/react`   | An array of configs for React/TS projects (perfectionist + prettier).|
+| `@whydrf/eslint-plugin-nava/configs/vitest`  | A flat config for vitest test files.                                 |
 
 ---
 

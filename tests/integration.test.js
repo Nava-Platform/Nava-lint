@@ -104,3 +104,42 @@ test('vitest config is a flat config object for test files', () => {
         `expected a vitest rule to fire, got ${JSON.stringify(messages)}`,
     );
 });
+
+test('createConfig with custom aliases uses them in sort-imports', () => {
+    const { createConfig } = plugin;
+    const custom = createConfig({ aliases: ['@mylib', '@ui'] });
+    assert.ok(Array.isArray(custom.react));
+    assert.ok(custom.vitest);
+
+    const linter = new Linter({ configType: 'flat' });
+    const messages = verifyWithParser(
+        linter,
+        [
+            "import { Button } from '@ui/Button';",
+            "import { reactStuff } from 'react';",
+        ].join('\n'),
+        custom.react,
+    );
+
+    assert.ok(
+        messages.some((m) => m.ruleId === 'perfectionist/sort-imports'),
+        `expected perfectionist/sort-imports, got ${JSON.stringify(messages)}`,
+    );
+});
+
+test('createConfig can disable prettier and vitest', () => {
+    const { createConfig } = plugin;
+    const config = createConfig({ prettier: false, vitest: false });
+    assert.ok(Array.isArray(config.react));
+    assert.strictEqual(config.vitest, undefined);
+
+    const mainBlock = config.react.find((c) => c.rules && c.rules['prettier/prettier']);
+    assert.strictEqual(mainBlock, undefined, 'prettier/prettier should be absent');
+});
+
+test('createConfig can disable js/ts recommended', () => {
+    const { createConfig } = plugin;
+    const config = createConfig({ jsRecommended: false, tsRecommended: false });
+    assert.ok(Array.isArray(config.react));
+    assert.ok(config.react.length > 0, 'should still have config blocks');
+});
