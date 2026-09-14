@@ -1,12 +1,12 @@
-import nava from 'eslint-plugin-nava/recommended';
+import nava from '@whydrf/eslint-plugin-nava/recommended';
+import tseslint from 'typescript-eslint';
 
 export default [
     nava,
     {
-        rules: {
-            'nava/no-inline-type-imports': 'error',
-            'nava/multiline-type-literals': 'error',
-            'nava/module-member-order': 'error',
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: {
+            parser: tseslint.parser,
         },
     },
 ];

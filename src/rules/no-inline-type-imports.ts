@@ -1,49 +1,12 @@
 import type { Rule } from 'eslint';
 
-const INLINE_TYPE_IMPORT = /^import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+(['"])([^'"]+)\2;?$/;
-
-const buildReplacement = (body: string, source: string): string | null => {
-    const typeSpecifiers: string[] = [];
-    const valueSpecifiers: string[] = [];
-
-    for (const raw of body.split(',')) {
-        const specifier = raw.trim();
-
-        if (specifier.length === 0) {
-            continue;
-        }
-
-        if (specifier.startsWith('type ')) {
-            typeSpecifiers.push(specifier.slice('type '.length).trim());
-        } else {
-            valueSpecifiers.push(specifier);
-        }
-    }
-
-    if (typeSpecifiers.length === 0) {
-        return null;
-    }
-
-    const lines: string[] = [];
-
-    if (typeSpecifiers.length > 0) {
-        lines.push(`import type { ${typeSpecifiers.join(', ')} } from '${source}';`);
-    }
-
-    if (valueSpecifiers.length > 0) {
-        lines.push(`import { ${valueSpecifiers.join(', ')} } from '${source}';`);
-    }
-
-    return lines.join('\n');
-};
-
 const noInlineTypeImportsRule: Rule.RuleModule = {
     meta: {
         docs: {
             description: 'Disallow inline type imports in favor of `import type { X }`.',
         },
         fixable: 'code',
-        type: 'layout',
+        type: 'suggestion',
         schema: [],
         messages: {
             inlineTypeImport: 'Use `import type { X }` instead of `import { type X }`.',
@@ -53,42 +16,56 @@ const noInlineTypeImportsRule: Rule.RuleModule = {
         const sourceCode = context.sourceCode;
 
         return {
-            Program(node) {
-                const text = sourceCode.getText(node);
-                const lines = text.split('\n');
+            ImportDeclaration(node: any) {
+                if (node.importKind === 'type') {
+                    return;
+                }
 
-                lines.forEach((line, index) => {
-                    const match = line.match(INLINE_TYPE_IMPORT);
+                const specifiers: any[] = node.specifiers ?? [];
+                const typeSpecifiers = specifiers.filter((specifier) => specifier.importKind === 'type');
 
-                    if (!match) {
-                        return;
-                    }
+                if (typeSpecifiers.length === 0) {
+                    return;
+                }
 
-                    const replacement = buildReplacement(match[1], match[3]);
+                const valueSpecifiers = specifiers.filter((specifier) => specifier.importKind !== 'type');
+                const from = sourceCode.getText(node.source);
+                const semicolon = sourceCode.getText(node).trimEnd().endsWith(';') ? ';' : '';
+                const renderTypeSpecifier = (specifier: any) =>
+                    sourceCode.getText(specifier).replace(/^type\s+/, '');
+                const renderValueLine = (specifiers: any[]) => {
+                    const defaultSpecifiers = specifiers.filter(
+                        (specifier) => specifier.type === 'ImportDefaultSpecifier',
+                    );
+                    const namespaceSpecifiers = specifiers.filter(
+                        (specifier) => specifier.type === 'ImportNamespaceSpecifier',
+                    );
+                    const namedSpecifiers = specifiers.filter((specifier) => specifier.type === 'ImportSpecifier');
+                    const parts = [
+                        ...defaultSpecifiers.map((specifier) => sourceCode.getText(specifier)),
+                        ...namespaceSpecifiers.map((specifier) => sourceCode.getText(specifier)),
+                        ...(namedSpecifiers.length > 0
+                            ? [`{ ${namedSpecifiers.map((specifier) => sourceCode.getText(specifier)).join(', ')} }`]
+                            : []),
+                    ];
 
-                    if (!replacement) {
-                        return;
-                    }
+                    return `import ${parts.join(', ')} from ${from}${semicolon}`;
+                };
+                const lines: string[] = [];
 
-                    const lineNumber = index + 1;
-                    const startColumn = line.indexOf('import') + 1;
-                    const endColumn = line.length + 1;
+                if (typeSpecifiers.length > 0) {
+                    const body = typeSpecifiers.map(renderTypeSpecifier).join(', ');
+                    lines.push(`import type { ${body} } from ${from}${semicolon}`);
+                }
 
-                    context.report({
-                        fix: (fixer) => {
-                            const lineStart = sourceCode.getIndexFromLoc({ line: lineNumber, column: 0 });
+                if (valueSpecifiers.length > 0) {
+                    lines.push(renderValueLine(valueSpecifiers));
+                }
 
-                            return fixer.replaceTextRange(
-                                [lineStart + line.indexOf('import'), lineStart + line.length],
-                                replacement,
-                            );
-                        },
-                        loc: {
-                            start: { line: lineNumber, column: startColumn },
-                            end: { line: lineNumber, column: endColumn },
-                        },
-                        messageId: 'inlineTypeImport',
-                    });
+                context.report({
+                    node: typeSpecifiers[0],
+                    messageId: 'inlineTypeImport',
+                    fix: (fixer) => fixer.replaceTextRange(node.range, lines.join('\n')),
                 });
             },
         };

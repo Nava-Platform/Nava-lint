@@ -8,6 +8,26 @@ const getLineIndent = (sourceCode: any, node: any): string => {
     return lineText.match(/^\s*/)?.[0] ?? '';
 };
 
+const getMemberText = (sourceCode: any, member: any): string => {
+    const text = sourceCode.getText(member).trim();
+
+    if (text.endsWith(';') || text.endsWith(',')) {
+        return text;
+    }
+
+    const nextCharacter = sourceCode.text[member.range[1]] ?? '';
+
+    if (nextCharacter === ';') {
+        return `${text};`;
+    }
+
+    if (nextCharacter === ',') {
+        return `${text},`;
+    }
+
+    return `${text};`;
+};
+
 const formatObjectLikeNode = (sourceCode: any, members: any[], node: any): string => {
     if (members.length === 0) {
         return '{}';
@@ -15,7 +35,7 @@ const formatObjectLikeNode = (sourceCode: any, members: any[], node: any): strin
 
     const currentIndent = getLineIndent(sourceCode, node);
     const innerIndent = `${currentIndent}${' '.repeat(INDENT_SIZE)}`;
-    const formattedMembers = members.map((member) => `${innerIndent}${sourceCode.getText(member).trim()}`);
+    const formattedMembers = members.map((member) => `${innerIndent}${getMemberText(sourceCode, member)}`);
 
     return `{\n${formattedMembers.join('\n')}\n${currentIndent}}`;
 };
@@ -28,6 +48,9 @@ const multilineTypeLiteralsRule: Rule.RuleModule = {
         fixable: 'code',
         type: 'layout',
         schema: [],
+        messages: {
+            multilineRequired: 'Inline object type literals must be multiline.',
+        },
     },
     create(context) {
         const sourceCode = context.sourceCode as any;
@@ -45,7 +68,7 @@ const multilineTypeLiteralsRule: Rule.RuleModule = {
 
             context.report({
                 fix: (fixer: any) => fixer.replaceText(node, formatObjectLikeNode(sourceCode, members, node)),
-                message: 'Inline object type literals must be multiline.',
+                messageId: 'multilineRequired',
                 node,
             });
         };

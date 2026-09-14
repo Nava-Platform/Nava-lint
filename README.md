@@ -58,8 +58,7 @@ pnpm add -D eslint typescript typescript-eslint @eslint/js
 
 ### Option 1 — Rules only (Recommended)
 
-If you just want the three rules + `consistent-type-imports` enabled and keep the rest of your
-config under your control:
+If you just want the three rules enabled and keep the rest of your config under your control:
 
 ```js
 // eslint.config.js
@@ -68,13 +67,17 @@ import nava from '@whydrf/eslint-plugin-nava/recommended';
 export default [
     nava,
     {
-        rules: {
-            // override any rule here
-            'nava/no-inline-type-imports': 'warn',
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: {
+            parser: (await import('typescript-eslint')).parser,
         },
     },
 ];
 ```
+
+> The `recommended` config includes the three rules. `TypeScript` (parser) is a peer
+> dependency; the parser must be configured for `.ts/.tsx` files, as above. No typed-linting
+> setup (`parserOptions.project`) is required.
 
 ### Option 2 — Full React config
 
@@ -218,7 +221,7 @@ const DEFAULTS = {};
 
 | Export                                       | Description                                                          |
 | -------------------------------------------- | -------------------------------------------------------------------- |
-| `@whydrf/eslint-plugin-nava/recommended`     | A `Linter.Config` with the three rules + `consistent-type-imports`.  |
+| `@whydrf/eslint-plugin-nava/recommended`     | A `Linter.Config` with the three rules enabled (ESLint 9 flat config).|
 | `@whydrf/eslint-plugin-nava/configs/react`   | An array of configs for React/TS projects (perfectionist + prettier).|
 
 ---

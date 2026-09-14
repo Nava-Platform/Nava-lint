@@ -30,10 +30,6 @@ export const configs: {
             'nava/no-inline-type-imports': 'error',
             'nava/multiline-type-literals': 'error',
             'nava/module-member-order': 'error',
-            '@typescript-eslint/consistent-type-imports': [
-                'error',
-                { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
-            ],
         },
     },
 
@@ -52,10 +48,6 @@ export const configs: {
                 'nava/no-inline-type-imports': 'error',
                 'nava/multiline-type-literals': 'error',
                 'nava/module-member-order': 'error',
-                '@typescript-eslint/consistent-type-imports': [
-                    'error',
-                    { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
-                ],
                 'perfectionist/sort-imports': [
                     'error',
                     {
