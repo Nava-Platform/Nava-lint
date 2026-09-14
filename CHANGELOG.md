@@ -2,6 +2,21 @@
 
 All notable changes to `@whydrf/eslint-plugin-nava` are documented here.
 
+## [1.0.0]
+
+Stable release. No breaking changes from v0.4.0 — the `createConfig` factory and all
+defaults remain identical.
+
+### Highlights since 0.1.0
+
+- `createConfig(options)` factory for full configurability (aliases, files, globals,
+  parser options, settings, rules, and all preset toggles).
+- `configs.vitest` — vitest flat config with recommended rules.
+- `@typescript-eslint/consistent-type-imports` with `separate-type-imports`.
+- `react-hooks/rules-of-hooks` + `react-hooks/exhaustive-deps`.
+- `perfectionist` v5 type/value groups for import sorting.
+- `prettier/prettier` integration.
+
 ## [0.4.0]
 
 ### Added
