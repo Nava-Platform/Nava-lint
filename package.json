@@ -68,9 +68,9 @@
   "engines": {
     "node": ">=18.18.0"
   },
-  "homepage": "https://github.com/vahidGhadiri/Nava-lint",
+  "homepage": "https://github.com/Nava-Platform/Nava-lint",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vahidGhadiri/Nava-lint.git"
+    "url": "https://github.com/Nava-Platform/Nava-lint.git"
   }
 }
