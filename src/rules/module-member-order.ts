@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint';
 
-const MODULE_MEMBER_ORDER = ['enum', 'type', 'interface', 'const'] as const;
+const MODULE_MEMBER_ORDER = ['enum', 'type', 'interface', 'const', 'export'] as const;
 const MODULE_MEMBER_RANK = new Map<string, number>(MODULE_MEMBER_ORDER.map((kind, index) => [kind, index]));
 
 const getSortableNode = (statement: any) => {
@@ -16,6 +16,10 @@ const getSortableNode = (statement: any) => {
 };
 
 const getMemberKind = (statement: any): string | null => {
+    if (statement.type === 'ExportDefaultDeclaration') {
+        return 'export';
+    }
+
     const node = getSortableNode(statement);
 
     if (!node) {

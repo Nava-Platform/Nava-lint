@@ -68,5 +68,27 @@ ruleTester.run('module-member-order', moduleMemberOrder, {
                 { message: /blank line between top-level declaration groups/ },
             ],
         },
+        {
+            code: [
+                "import type { FC } from 'react';",
+                '',
+                'interface CardProps {}',
+                'const Card: FC<CardProps> = () => null;',
+                'export default Card;',
+                'type CardVariant = "compact" | "expanded";',
+            ].join('\n'),
+            output: [
+                "import type { FC } from 'react';",
+                '',
+                'type CardVariant = "compact" | "expanded";',
+                '',
+                'interface CardProps {}',
+                '',
+                'const Card: FC<CardProps> = () => null;',
+                '',
+                'export default Card;',
+            ].join('\n'),
+            errors: [{ message: /must be ordered as imports/ }],
+        },
     ],
 });

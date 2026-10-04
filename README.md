@@ -618,10 +618,11 @@ interface User {
 
 ### `nava/module-member-order` ⚠️ auto-fix
 
-Enforces the order of top-level declarations (after the import block):
+Enforces the order of top-level declarations (after the import block), including
+placing a trailing default export after declarations:
 
 ```
-imports → enum → type → interface → const
+imports → enum → type → interface → const → export default
 ```
 
 ```ts
@@ -637,8 +638,9 @@ const DEFAULTS = {};
 ```
 
 > The rule only checks the leading block of declarations (up to the first statement that is not
-> one of these four kinds). If there are comments between them, auto-fix is skipped to avoid
-> dropping comments — only a report is emitted.
+> one of these kinds). If there are comments between declarations that need reordering, auto-fix
+> is skipped to avoid dropping comments — only a report is emitted. It also enforces a blank line
+> between the import block and the first declaration, and between each ordered declaration.
 
 ---
 

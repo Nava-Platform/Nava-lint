@@ -2,6 +2,15 @@
 
 All notable changes to `@whydrf/eslint-plugin-nava` are documented here.
 
+## [1.0.2]
+
+### Fixed
+
+- `nava/module-member-order` now keeps trailing default exports in the ordered declaration block,
+  so type declarations placed after `export default` are detected and moved to the right position.
+- Enforce and autofix blank lines after the import block and between ordered top-level members,
+  even when their declaration order was already correct.
+
 ## [1.0.0]
 
 Stable release. No breaking changes from v0.4.0 — the `createConfig` factory and all
