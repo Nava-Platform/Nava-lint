@@ -24,6 +24,7 @@ ruleTester.run('module-member-order', moduleMemberOrder, {
         ].join('\n'),
         ['type A = string;', '', 'interface B {}'].join('\n'),
         ['interface A {}', '', 'const b = 1;'].join('\n'),
+        ["import { x } from './a';", '', 'type Id = string;'].join('\n'),
         'const a = 1;\nconsole.log(a);',
     ],
     invalid: [
@@ -53,6 +54,19 @@ ruleTester.run('module-member-order', moduleMemberOrder, {
             code: 'enum Direction { Up }\nconst DEFAULTS = {};\ntype Id = string;',
             output: 'enum Direction { Up }\n\ntype Id = string;\n\nconst DEFAULTS = {};',
             errors: [{ message: /must be ordered as imports/ }],
+        },
+        {
+            code: "import { x } from './a';\ntype Id = string;",
+            output: "import { x } from './a';\n\ntype Id = string;",
+            errors: [{ message: /blank line between top-level declaration groups/ }],
+        },
+        {
+            code: 'type Id = string;\ninterface User_ {}\nconst DEFAULTS = {};',
+            output: 'type Id = string;\n\ninterface User_ {}\n\nconst DEFAULTS = {};',
+            errors: [
+                { message: /blank line between top-level declaration groups/ },
+                { message: /blank line between top-level declaration groups/ },
+            ],
         },
     ],
 });

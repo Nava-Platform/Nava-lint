@@ -99,6 +99,12 @@ const sortSegment = (segment: { kind: string; index: number; statement: any }[])
         return left.index - right.index;
     });
 
+const hasBlankLineBetween = (sourceCode: any, previous: any, next: any): boolean => {
+    const gap = sourceCode.text.slice(previous.range[1], next.range[0]);
+
+    return /(?:\r\n|\n|\r)[\t ]*(?:\r\n|\n|\r)/.test(gap);
+};
+
 const moduleMemberOrderRule: Rule.RuleModule = {
     meta: {
         docs: {
@@ -115,39 +121,77 @@ const moduleMemberOrderRule: Rule.RuleModule = {
             Program(program: any) {
                 const segment = buildHeaderSegment(program.body);
 
-                if (segment.length < 2 || isSegmentOrdered(segment)) {
+                if (segment.length === 0) {
                     return;
                 }
 
-                const firstOutOfOrderNode = segment.find(({ kind }, index) => {
-                    const currentRank = MODULE_MEMBER_RANK.get(kind) ?? Number.MAX_SAFE_INTEGER;
-                    const previousRanks = segment
-                        .slice(0, index)
-                        .map((item) => MODULE_MEMBER_RANK.get(item.kind) ?? Number.MAX_SAFE_INTEGER);
+                const ordered = segment.length < 2 || isSegmentOrdered(segment);
 
-                    return previousRanks.some((previousRank) => previousRank > currentRank);
-                });
+                if (!ordered) {
+                    const firstOutOfOrderNode = segment.find(({ kind }, index) => {
+                        const currentRank = MODULE_MEMBER_RANK.get(kind) ?? Number.MAX_SAFE_INTEGER;
+                        const previousRanks = segment
+                            .slice(0, index)
+                            .map((item) => MODULE_MEMBER_RANK.get(item.kind) ?? Number.MAX_SAFE_INTEGER);
 
-                const createFix = () => {
-                    if (hasCommentsInSegment(sourceCode, segment)) {
-                        return null;
+                        return previousRanks.some((previousRank) => previousRank > currentRank);
+                    });
+
+                    const createFix = () => {
+                        if (hasCommentsInSegment(sourceCode, segment)) {
+                            return null;
+                        }
+
+                        const sortedSegment = sortSegment(segment.map((item, index) => ({ ...item, index })));
+                        const replacement = sortedSegment
+                            .map(({ statement }) => sourceCode.getText(statement))
+                            .join('\n\n');
+                        const firstStatement = segment[0].statement;
+                        const lastStatement = segment[segment.length - 1].statement;
+
+                        return (fixer: any) => fixer.replaceTextRange([firstStatement.range[0], lastStatement.range[1]], replacement);
+                    };
+
+                    context.report({
+                        message: `Top-level declarations must be ordered as imports -> ${MODULE_MEMBER_ORDER.join(' -> ')}.`,
+                        node: firstOutOfOrderNode?.statement ?? segment[0].statement,
+                        fix: createFix() ?? undefined,
+                    });
+                    return;
+                }
+
+                const imports = program.body.slice(0, getImportBlockEndIndex(program.body));
+                const firstMember = segment[0].statement;
+                const previousNode = imports.length > 0
+                    ? imports[imports.length - 1]
+                    : null;
+                const spacingPairs = [
+                    ...(previousNode ? [[previousNode, firstMember]] : []),
+                    ...segment.slice(1).map(({ statement }, index) => [
+                        segment[index].statement,
+                        statement,
+                    ]),
+                ];
+
+                for (const [previous, next] of spacingPairs) {
+                    if (hasBlankLineBetween(sourceCode, previous, next)) {
+                        continue;
                     }
 
-                    const sortedSegment = sortSegment(segment.map((item, index) => ({ ...item, index })));
-                    const replacement = sortedSegment
-                        .map(({ statement }) => sourceCode.getText(statement))
-                        .join('\n\n');
-                    const firstStatement = segment[0].statement;
-                    const lastStatement = segment[segment.length - 1].statement;
+                    context.report({
+                        message: 'Add a blank line between top-level declaration groups.',
+                        node: next,
+                        fix(fixer: any) {
+                            const gap = sourceCode.text.slice(previous.range[1], next.range[0]);
+                            const endOfLine = sourceCode.text.includes('\r\n') ? '\r\n' : '\n';
+                            const prefix = /(?:\r\n|\n|\r)$/.test(gap)
+                                ? endOfLine
+                                : `${endOfLine}${endOfLine}`;
 
-                    return (fixer: any) => fixer.replaceTextRange([firstStatement.range[0], lastStatement.range[1]], replacement);
-                };
-
-                context.report({
-                    message: `Top-level declarations must be ordered as imports -> ${MODULE_MEMBER_ORDER.join(' -> ')}.`,
-                    node: firstOutOfOrderNode?.statement ?? segment[0].statement,
-                    fix: createFix() ?? undefined,
-                });
+                            return fixer.insertTextBefore(next, prefix);
+                        },
+                    });
+                }
             },
         };
     },
